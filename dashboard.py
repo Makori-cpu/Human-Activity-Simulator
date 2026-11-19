@@ -1,12 +1,12 @@
 from datetime import datetime
 import tkinter as tk
-
 from activity_logger import ActivityLogger
 from keyboard_control import KeyboardController
 from mouse_control import MouseController
 from task_manager import TaskManager
 from settings_manager import SettingsManager
-from tkinter import messagebox
+from tkinter import filedialog, messagebox
+from excel_live_controller import ExcelLiveController
 
 
 class HumanActivitySimulator:
@@ -14,6 +14,11 @@ class HumanActivitySimulator:
         self.logger = ActivityLogger()
         self.task_manager = TaskManager()
         self.settings_manager = SettingsManager()
+        self.excel_controller = ExcelLiveController(
+            on_progress=self.update_excel_progress,
+            on_status=self.update_excel_status,
+        )
+        self.excel_source_path = None
         self.root = root
         self.running = False
         self.paused = False
@@ -43,6 +48,7 @@ class HumanActivitySimulator:
             "Mouse Control",
             "Keyboard Control",
             "Task Manager",
+            "Excel Automation",
             "Activity Logs",
             "Settings",
         ]
@@ -51,6 +57,8 @@ class HumanActivitySimulator:
                 action = self.open_task_manager
             elif section == "Settings":
                 action = self.open_settings
+            elif section == "Excel Automation":
+                action = self.open_excel_automation
             else:
                 action = lambda s=section: self.log(f"{s} selected.")
 
@@ -65,6 +73,7 @@ class HumanActivitySimulator:
                 padx=20,
                 command=action,
             ).pack(fill="x", ipady=12)
+
 
     def create_dashboard(self):
         content = tk.Frame(self.root, bg="#101820")
@@ -521,6 +530,115 @@ class HumanActivitySimulator:
             fg="white",
             width=20
         ).pack(pady=15)
+
+    def open_excel_automation(self):
+
+        window = tk.Toplevel(self.root)
+        window.title("Excel Automation")
+        window.geometry("550x400")
+        window.configure(bg="#101820")
+
+        self.excel_status_label = tk.Label(
+            window,
+            text="Select a source workbook.",
+            fg="white",
+            bg="#101820"
+        )
+        self.excel_status_label.pack(pady=10)
+
+        self.excel_progress_label = tk.Label(
+            window,
+            text="Records completed: 0 / 0",
+            fg="white",
+            bg="#101820"
+        )
+        self.excel_progress_label.pack(pady=10)
+
+        tk.Button(
+            window,
+            text="SELECT SOURCE EXCEL FILE",
+            command=self.select_excel_source
+        ).pack(pady=8)
+
+        controls = tk.Frame(window, bg="#101820")
+        controls.pack(pady=15)
+
+        tk.Button(controls, text="START",
+                  command=self.start_excel_typing).pack(side="left", padx=5)
+
+        tk.Button(controls, text="PAUSE",
+                  command=self.excel_controller.pause).pack(side="left", padx=5)
+
+        tk.Button(controls, text="RESUME",
+                  command=self.excel_controller.resume).pack(side="left", padx=5)
+
+        tk.Button(controls, text="STOP",
+                  command=self.excel_controller.stop).pack(side="left", padx=5)
+
+
+    def select_excel_source(self):
+
+        file_path = filedialog.askopenfilename(
+            title="Select source Excel workbook",
+            filetypes=[("Excel files", "*.xlsx")]
+        )
+
+        if not file_path:
+            return
+
+        try:
+            count = self.excel_controller.load_source(file_path)
+            self.excel_source_path = file_path
+
+            self.excel_status_label.config(
+                text=f"Loaded {count} records."
+            )
+
+            self.excel_progress_label.config(
+                text=f"Records completed: 0 / {count}"
+            )
+
+            messagebox.showinfo(
+                "Success",
+                f"Loaded {count} records successfully."
+            )
+
+        except Exception as error:
+            messagebox.showerror("Excel Error", str(error))
+
+
+    def start_excel_typing(self):
+
+        if not self.excel_source_path:
+            messagebox.showwarning(
+                "Missing file",
+                "Select a source workbook first."
+            )
+            return
+
+        if self.excel_controller.running:
+            return
+
+        self.excel_controller.start()
+
+
+    def update_excel_progress(self, completed, total):
+
+        self.root.after(
+            0,
+            lambda: self.excel_progress_label.config(
+                text=f"Records completed: {completed} / {total}"
+            )
+        )
+
+
+    def update_excel_status(self, status):
+
+        self.root.after(
+            0,
+            lambda: self.excel_status_label.config(text=status)
+        )
+
 
 
 

@@ -1,29 +1,32 @@
-
-import tkinter as tk
-from tkinter import messagebox
 from datetime import datetime
+import tkinter as tk
+
+from activity_logger import ActivityLogger
+from keyboard_control import KeyboardController
+from mouse_control import MouseController
+from task_manager import TaskManager
+from settings_manager import SettingsManager
+from tkinter import messagebox
 
 
 class HumanActivitySimulator:
-
     def __init__(self, root):
+        self.logger = ActivityLogger()
+        self.task_manager = TaskManager()
+        self.settings_manager = SettingsManager()
         self.root = root
         self.running = False
         self.paused = False
 
         self.root.title("Human Activity Simulator")
-        self.root.geometry("1050x700")
+        self.root.geometry("1100x750")
         self.root.configure(bg="#101820")
 
         self.create_sidebar()
         self.create_dashboard()
 
     def create_sidebar(self):
-        sidebar = tk.Frame(
-            self.root,
-            bg="#17232f",
-            width=220
-        )
+        sidebar = tk.Frame(self.root, bg="#17232f", width=220)
         sidebar.pack(side="left", fill="y")
         sidebar.pack_propagate(False)
 
@@ -32,7 +35,7 @@ class HumanActivitySimulator:
             text="HAS",
             font=("Arial", 28, "bold"),
             fg="#00d4aa",
-            bg="#17232f"
+            bg="#17232f",
         ).pack(pady=30)
 
         sections = [
@@ -41,10 +44,15 @@ class HumanActivitySimulator:
             "Keyboard Control",
             "Task Manager",
             "Activity Logs",
-            "Settings"
+            "Settings",
         ]
+ if section == "Task Manager":
+       action = self.open_task_manager
+elif section == "Settings":
+    action = self.open_settings
+else:
+    action = lambda s=section: self.log(f"{s} selected.")
 
-        for section in sections:
             tk.Button(
                 sidebar,
                 text=section,
@@ -53,20 +61,18 @@ class HumanActivitySimulator:
                 fg="white",
                 relief="flat",
                 anchor="w",
-                padx=20
+                padx=20,
+                command=action,
             ).pack(fill="x", ipady=12)
 
     def create_dashboard(self):
-        content = tk.Frame(
-            self.root,
-            bg="#101820"
-        )
+        content = tk.Frame(self.root, bg="#101820")
         content.pack(
             side="left",
             fill="both",
             expand=True,
-            padx=30,
-            pady=30
+            padx=25,
+            pady=20,
         )
 
         tk.Label(
@@ -74,7 +80,7 @@ class HumanActivitySimulator:
             text="Human Activity Simulator",
             font=("Arial", 23, "bold"),
             fg="white",
-            bg="#101820"
+            bg="#101820",
         ).pack(anchor="w")
 
         tk.Label(
@@ -82,45 +88,37 @@ class HumanActivitySimulator:
             text="Desktop automation control center",
             font=("Arial", 11),
             fg="#9baab7",
-            bg="#101820"
-        ).pack(anchor="w", pady=8)
+            bg="#101820",
+        ).pack(anchor="w", pady=5)
 
-        status_frame = tk.Frame(
-            content,
-            bg="#17232f",
-            padx=20,
-            pady=20
-        )
-        status_frame.pack(fill="x", pady=20)
+        status = tk.Frame(content, bg="#17232f", padx=15, pady=12)
+        status.pack(fill="x", pady=12)
 
         tk.Label(
-            status_frame,
+            status,
             text="AUTOMATION STATUS",
             fg="#9baab7",
-            bg="#17232f"
+            bg="#17232f",
         ).pack(anchor="w")
 
         self.status_label = tk.Label(
-            status_frame,
+            status,
             text="READY",
-            font=("Arial", 24, "bold"),
+            font=("Arial", 20, "bold"),
             fg="#00d4aa",
-            bg="#17232f"
+            bg="#17232f",
         )
-        self.status_label.pack(anchor="w", pady=10)
+        self.status_label.pack(anchor="w")
 
-        controls = tk.Frame(
-            content,
-            bg="#101820"
-        )
-        controls.pack(anchor="w", pady=10)
+        controls = tk.Frame(content, bg="#101820")
+        controls.pack(anchor="w", pady=8)
 
         tk.Button(
             controls,
             text="START",
             width=12,
             bg="#00d4aa",
-            command=self.start_simulation
+            command=self.start_session,
         ).pack(side="left", padx=5)
 
         tk.Button(
@@ -128,7 +126,7 @@ class HumanActivitySimulator:
             text="PAUSE",
             width=12,
             bg="#f0b429",
-            command=self.pause_simulation
+            command=self.pause_session,
         ).pack(side="left", padx=5)
 
         tk.Button(
@@ -137,79 +135,387 @@ class HumanActivitySimulator:
             width=12,
             bg="#e05252",
             fg="white",
-            command=self.stop_simulation
+            command=self.stop_session,
+        ).pack(side="left", padx=5)
+
+        tk.Label(
+            content,
+            text="MOUSE CONTROL",
+            font=("Arial", 14, "bold"),
+            fg="white",
+            bg="#101820",
+        ).pack(anchor="w", pady=(12, 5))
+
+        self.canvas = tk.Canvas(
+            content,
+            height=145,
+            bg="#17232f",
+            highlightthickness=0,
+        )
+        self.canvas.pack(fill="x")
+        self.mouse = MouseController(self.canvas)
+
+        mouse_buttons = tk.Frame(content, bg="#101820")
+        mouse_buttons.pack(anchor="w", pady=7)
+
+        tk.Button(
+            mouse_buttons,
+            text="MOVE POINTER",
+            command=self.test_mouse_move,
+        ).pack(side="left", padx=5)
+
+        tk.Button(
+            mouse_buttons,
+            text="TEST CLICK",
+            command=self.test_mouse_click,
+        ).pack(side="left", padx=5)
+
+        tk.Label(
+            content,
+            text="KEYBOARD CONTROL",
+            font=("Arial", 14, "bold"),
+            fg="white",
+            bg="#101820",
+        ).pack(anchor="w", pady=(10, 5))
+
+        self.text_entry = tk.Entry(content, font=("Arial", 12))
+        self.text_entry.pack(fill="x", pady=5)
+        self.keyboard = KeyboardController(self.text_entry)
+
+        keyboard_buttons = tk.Frame(content, bg="#101820")
+        keyboard_buttons.pack(anchor="w", pady=5)
+
+        tk.Button(
+            keyboard_buttons,
+            text="TYPE TEST TEXT",
+            command=self.test_keyboard,
+        ).pack(side="left", padx=5)
+
+        tk.Button(
+            keyboard_buttons,
+            text="CLEAR TEXT",
+            command=self.clear_keyboard,
         ).pack(side="left", padx=5)
 
         tk.Label(
             content,
             text="ACTIVITY LOG",
-            font=("Arial", 14, "bold"),
+            font=("Arial", 13, "bold"),
             fg="white",
-            bg="#101820"
-        ).pack(anchor="w", pady=15)
+            bg="#101820",
+        ).pack(anchor="w", pady=(10, 5))
 
         self.log_box = tk.Text(
             content,
-            height=15,
+            height=5,
             bg="#17232f",
             fg="#00d4aa",
-            font=("Consolas", 10),
-            relief="flat"
+            font=("Consolas", 9),
+            relief="flat",
         )
         self.log_box.pack(fill="both", expand=True)
 
-        self.log("Application initialized successfully.")
+        tk.Button(
+            content,
+            text="VIEW ACTIVITY HISTORY",
+            bg="#00d4aa",
+            fg="#101820",
+            font=("Arial", 10, "bold"),
+            command=self.view_activity_history,
+        ).pack(anchor="w", pady=8)
+
+        self.log("HAS initialized successfully.")
+        self.log("Mouse and keyboard test modules connected.")
 
     def log(self, message):
-        timestamp = datetime.now().strftime("%H:%M:%S")
+        if hasattr(self, "log_box"):
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            self.log_box.insert(tk.END, f"[{timestamp}] {message}\n")
+            self.log_box.see(tk.END)
 
-        self.log_box.insert(
-            tk.END,
-            f"[{timestamp}] {message}\n"
-        )
-
-        self.log_box.see(tk.END)
-
-    def start_simulation(self):
+    def start_session(self):
         if self.running and not self.paused:
-            self.log("Automation is already running.")
+            self.log("Session is already running.")
             return
 
         self.running = True
         self.paused = False
+        self.status_label.config(text="RUNNING", fg="#00d4aa")
+        self.log("Test session started.")
+        self.logger.log_activity("Test session started.")
 
-        self.status_label.config(
-            text="RUNNING",
-            fg="#00d4aa"
-        )
-
-        self.log("Automation session started.")
-
-    def pause_simulation(self):
+    def pause_session(self):
         if not self.running or self.paused:
             self.log("No active session to pause.")
             return
 
         self.paused = True
+        self.status_label.config(text="PAUSED", fg="#f0b429")
+        self.log("Test session paused.")
+        self.logger.log_activity("Test session paused.")
 
-        self.status_label.config(
-            text="PAUSED",
-            fg="#f0b429"
-        )
-
-        self.log("Automation session paused.")
-
-    def stop_simulation(self):
+    def stop_session(self):
         if not self.running:
             self.log("No active session.")
             return
 
         self.running = False
         self.paused = False
+        self.status_label.config(text="STOPPED", fg="#e05252")
+        self.log("Test session stopped.")
+        self.logger.log_activity("Test session stopped.")
 
-        self.status_label.config(
-            text="STOPPED",
-            fg="#e05252"
+    def test_mouse_move(self):
+        self.mouse.move_pointer(150, 70)
+        self.log("Test pointer moved.")
+
+    def test_mouse_click(self):
+        self.mouse.click_position(300, 70)
+        self.log("Test click marker displayed.")
+
+    def test_keyboard(self):
+        self.keyboard.type_text(
+            "Human Activity Simulator is working!"
+        )
+        self.log("Test text entered.")
+
+    def clear_keyboard(self):
+        self.keyboard.clear_text()
+        self.log("Test field cleared.")
+
+    def view_activity_history(self):
+        activities = self.logger.get_activities()
+        self.log_box.insert(tk.END, "\n--- ACTIVITY HISTORY ---\n")
+
+        if not activities:
+            self.log_box.insert(tk.END, "No recorded activities.\n")
+        else:
+            for activity in activities:
+                self.log_box.insert(
+                    tk.END,
+                    f"[{activity['time']}] {activity['message']}\n",
+                )
+
+        self.log_box.see(tk.END)
+
+    def open_task_manager(self):
+        task_window = tk.Toplevel(self.root)
+        task_window.title("HAS - Task Manager")
+        task_window.geometry("650x500")
+        task_window.configure(bg="#101820")
+
+        tk.Label(
+            task_window,
+            text="TASK MANAGER",
+            font=("Arial", 20, "bold"),
+            fg="#00d4aa",
+            bg="#101820",
+        ).pack(pady=15)
+
+        task_entry = tk.Entry(task_window, font=("Arial", 12), width=40)
+        task_entry.pack(pady=10)
+
+        task_list = tk.Listbox(
+            task_window,
+            font=("Arial", 11),
+            bg="#17232f",
+            fg="white",
+            selectbackground="#00d4aa",
+            height=12,
+            width=65,
+        )
+        task_list.pack(pady=10, padx=15)
+
+        def refresh_tasks():
+            task_list.delete(0, tk.END)
+            for task in self.task_manager.get_tasks():
+                status = "COMPLETED" if task["completed"] else "PENDING"
+                task_list.insert(
+                    tk.END,
+                    f'{task["id"]}. {task["title"]} - {status}',
+                )
+
+        def add_task():
+            title = task_entry.get()
+            if self.task_manager.add_task(title):
+                clean_title = title.strip()
+                self.logger.log_activity(f"Task added: {clean_title}")
+                task_entry.delete(0, tk.END)
+                refresh_tasks()
+                self.log(f"Task added: {clean_title}")
+            else:
+                self.log("Please enter a task title.")
+
+        def complete_task():
+            selection = task_list.curselection()
+            if not selection:
+                self.log("Select a task first.")
+                return
+
+            task = self.task_manager.get_tasks()[selection[0]]
+            if self.task_manager.complete_task(task["id"]):
+                self.logger.log_activity(
+                    f"Task completed: {task['title']}"
+                )
+                refresh_tasks()
+
+        def delete_task():
+            selection = task_list.curselection()
+            if not selection:
+                self.log("Select a task first.")
+                return
+
+            task = self.task_manager.get_tasks()[selection[0]]
+            if self.task_manager.delete_task(task["id"]):
+                self.logger.log_activity(
+                    f"Task deleted: {task['title']}"
+                )
+                refresh_tasks()
+
+        buttons = tk.Frame(task_window, bg="#101820")
+        buttons.pack(pady=10)
+
+        tk.Button(
+            buttons,
+            text="ADD TASK",
+            bg="#00d4aa",
+            command=add_task,
+        ).pack(side="left", padx=5)
+
+        tk.Button(
+            buttons,
+            text="COMPLETE TASK",
+            bg="#f0b429",
+            command=complete_task,
+        ).pack(side="left", padx=5)
+
+        tk.Button(
+            buttons,
+            text="DELETE TASK",
+            bg="#e05252",
+            fg="white",
+            command=delete_task,
+        ).pack(side="left", padx=5)
+
+        refresh_tasks()
+
+
+    def open_settings(self):
+        settings_window = tk.Toplevel(self.root)
+        settings_window.title("Settings")
+        settings_window.geometry("450x450")
+        settings_window.configure(bg="#f4f4f4")
+
+        tk.Label(
+            settings_window,
+            text="Application Settings",
+            font=("Arial", 18, "bold"),
+            bg="#f4f4f4"
+        ).pack(pady=20)
+
+        settings = self.settings_manager.get_all_settings()
+
+        # Session duration
+        tk.Label(
+            settings_window,
+            text="Session Duration (minutes)",
+            bg="#f4f4f4"
+        ).pack()
+
+        session_entry = tk.Entry(settings_window)
+        session_entry.insert(0, str(settings["session_duration"]))
+        session_entry.pack(pady=5)
+
+        # Mouse speed
+        tk.Label(
+            settings_window,
+            text="Mouse Movement Speed",
+            bg="#f4f4f4"
+        ).pack()
+
+        mouse_entry = tk.Entry(settings_window)
+        mouse_entry.insert(0, str(settings["mouse_speed"]))
+        mouse_entry.pack(pady=5)
+
+        # Typing speed
+        tk.Label(
+            settings_window,
+            text="Keyboard Typing Speed",
+            bg="#f4f4f4"
+        ).pack()
+
+        typing_entry = tk.Entry(settings_window)
+        typing_entry.insert(0, str(settings["typing_speed"]))
+        typing_entry.pack(pady=5)
+
+        # Activity logging
+        log_var = tk.BooleanVar(
+            value=settings["log_activities"]
         )
 
-        self.log("Automation session stopped.")
+        tk.Checkbutton(
+            settings_window,
+            text="Enable Activity Logging",
+            variable=log_var,
+            bg="#f4f4f4"
+        ).pack(pady=15)
+
+        def save_settings():
+            try:
+                session_duration = int(session_entry.get())
+                mouse_speed = int(mouse_entry.get())
+                typing_speed = int(typing_entry.get())
+
+                if session_duration <= 0:
+                    raise ValueError
+
+                if not 1 <= mouse_speed <= 10:
+                    raise ValueError
+
+                if not 1 <= typing_speed <= 10:
+                    raise ValueError
+
+                self.settings_manager.update_setting(
+                    "session_duration", session_duration
+                )
+
+                self.settings_manager.update_setting(
+                    "mouse_speed", mouse_speed
+                )
+
+                self.settings_manager.update_setting(
+                    "typing_speed", typing_speed
+                )
+
+                self.settings_manager.update_setting(
+                    "log_activities", log_var.get()
+                )
+
+                tk.messagebox.showinfo(
+                    "Success",
+                    "Settings saved successfully!"
+                )
+
+                settings_window.destroy()
+
+            except ValueError:
+                tk.messagebox.showerror(
+                    "Invalid Input",
+                    "Enter valid numbers. Session duration must be positive, and speeds must be between 1 and 10."
+                )
+
+        tk.Button(
+            settings_window,
+            text="Save Settings",
+            command=save_settings,
+            bg="#2e8b57",
+            fg="white",
+            width=20
+        ).pack(pady=15)
+
+
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = HumanActivitySimulator(root)
+    root.mainloop()

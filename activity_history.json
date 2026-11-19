@@ -1,0 +1,50 @@
+[
+    {
+        "time": "2026-11-19 00:46:36",
+        "message": "Simulator started"
+    },
+    {
+        "time": "2026-11-19 00:46:36",
+        "message": "Mouse movement tested"
+    },
+    {
+        "time": "2026-11-19 00:46:36",
+        "message": "Keyboard input tested"
+    },
+    {
+        "time": "2026-11-19 00:48:02",
+        "message": "Simulator started"
+    },
+    {
+        "time": "2026-11-19 00:48:02",
+        "message": "Mouse movement tested"
+    },
+    {
+        "time": "2026-11-19 00:48:02",
+        "message": "Keyboard input tested"
+    },
+    {
+        "time": "2026-11-19 01:34:33",
+        "message": "Task completed: Test mouse controller"
+    },
+    {
+        "time": "2026-11-19 01:34:43",
+        "message": "Task deleted: Test mouse controller"
+    },
+    {
+        "time": "2026-11-19 08:22:59",
+        "message": "Task added: j2ke2lkdmm2ld2"
+    },
+    {
+        "time": "2026-11-19 08:24:48",
+        "message": "Test session started."
+    },
+    {
+        "time": "2026-11-19 08:24:52",
+        "message": "Test session paused."
+    },
+    {
+        "time": "2026-11-19 08:24:54",
+        "message": "Test session stopped."
+    }
+]

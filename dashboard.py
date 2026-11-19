@@ -46,12 +46,13 @@ class HumanActivitySimulator:
             "Activity Logs",
             "Settings",
         ]
- if section == "Task Manager":
-       action = self.open_task_manager
-elif section == "Settings":
-    action = self.open_settings
-else:
-    action = lambda s=section: self.log(f"{s} selected.")
+        for section in sections:
+            if section == "Task Manager":
+                action = self.open_task_manager
+            elif section == "Settings":
+                action = self.open_settings
+            else:
+                action = lambda s=section: self.log(f"{s} selected.")
 
             tk.Button(
                 sidebar,
@@ -153,30 +154,36 @@ else:
             highlightthickness=0,
         )
         self.canvas.pack(fill="x")
-        self.mouse = MouseController(self.canvas)
+        self.mouse = MouseController()
 
+        
         mouse_buttons = tk.Frame(content, bg="#101820")
         mouse_buttons.pack(anchor="w", pady=7)
 
         tk.Button(
             mouse_buttons,
-            text="MOVE POINTER",
-            command=self.test_mouse_move,
+            text="START RANDOM MOVEMENT",
+            command=self.mouse.start_random_movement,
         ).pack(side="left", padx=5)
 
         tk.Button(
             mouse_buttons,
-            text="TEST CLICK",
-            command=self.test_mouse_click,
+            text="PAUSE",
+            command=self.mouse.pause_movement,
         ).pack(side="left", padx=5)
 
-        tk.Label(
-            content,
-            text="KEYBOARD CONTROL",
-            font=("Arial", 14, "bold"),
-            fg="white",
-            bg="#101820",
-        ).pack(anchor="w", pady=(10, 5))
+        tk.Button(
+            mouse_buttons,
+            text="RESUME",
+            command=self.mouse.resume_movement,
+        ).pack(side="left", padx=5)
+
+        tk.Button(
+            mouse_buttons,
+            text="STOP",
+            command=self.mouse.stop_movement,
+        ).pack(side="left", padx=5)
+
 
         self.text_entry = tk.Entry(content, font=("Arial", 12))
         self.text_entry.pack(fill="x", pady=5)
@@ -265,13 +272,15 @@ else:
         self.log("Test session stopped.")
         self.logger.log_activity("Test session stopped.")
 
+   
     def test_mouse_move(self):
-        self.mouse.move_pointer(150, 70)
-        self.log("Test pointer moved.")
+        position = self.mouse.move_to_random_position()
+        self.log(f"Windows mouse moved to {position}.")
 
     def test_mouse_click(self):
-        self.mouse.click_position(300, 70)
-        self.log("Test click marker displayed.")
+        self.mouse.click_at_current_position()
+        self.log("Windows mouse clicked at its current position.")
+
 
     def test_keyboard(self):
         self.keyboard.type_text(

@@ -1,34 +1,81 @@
 
+import pyautogui
+import random
+import threading
+import time
+
+
 class MouseController:
+        
+    def click_at_current_position(self):
+        pyautogui.click()
 
-    def __init__(self, canvas):
-        self.canvas = canvas
-        self.pointer = None
+    def __init__(self):
+        self.running = False
+        self.paused = False
+        self.interval = 2
 
-    def move_pointer(self, target_x, target_y):
+        self.thread = None
+        self.lock = threading.Lock()
 
-        if self.pointer is None:
-            self.pointer = self.canvas.create_oval(
-                10, 10, 24, 24,
-                fill="#00d4aa",
-                outline=""
-            )
+        pyautogui.FAILSAFE = True
+        pyautogui.PAUSE = 0.1
 
-        self.canvas.coords(
-            self.pointer,
-            target_x - 7,
-            target_y - 7,
-            target_x + 7,
-            target_y + 7
+    def get_random_position(self):
+        screen_width, screen_height = pyautogui.size()
+
+        x = random.randint(100, max(100, screen_width - 100))
+        y = random.randint(100, max(100, screen_height - 100))
+
+        return x, y
+
+    def move_to_random_position(self):
+        x, y = self.get_random_position()
+
+        pyautogui.moveTo(x, y, duration=0.5)
+
+        print(f"Mouse moved to: ({x}, {y})")
+
+    def movement_loop(self):
+        while self.running:
+
+            if not self.paused:
+                try:
+                    self.move_to_random_position()
+
+                except pyautogui.FailSafeException:
+                    self.stop_movement()
+                    print("Emergency stop activated.")
+                    break
+
+            time.sleep(self.interval)
+
+    def start_random_movement(self):
+        if self.running:
+            return
+
+        self.running = True
+        self.paused = False
+
+        self.thread = threading.Thread(
+            target=self.movement_loop,
+            daemon=True
         )
 
-    def click_position(self, x, y):
+        self.thread.start()
 
-        self.move_pointer(x, y)
+        print("Random mouse movement started.")
 
-        self.canvas.create_oval(
-            x - 12, y - 12,
-            x + 12, y + 12,
-            outline="#f0b429",
-            width=2
-        )
+    def pause_movement(self):
+        self.paused = True
+        print("Mouse movement paused.")
+
+    def resume_movement(self):
+        if self.running:
+            self.paused = False
+            print("Mouse movement resumed.")
+
+    def stop_movement(self):
+        self.running = False
+        self.paused = False
+        print("Mouse movement stopped.")

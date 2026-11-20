@@ -7,6 +7,7 @@ from task_manager import TaskManager
 from settings_manager import SettingsManager
 from tkinter import filedialog, messagebox
 from excel_live_controller import ExcelLiveController
+import os
 
 
 class HumanActivitySimulator:
@@ -19,6 +20,7 @@ class HumanActivitySimulator:
             on_status=self.update_excel_status,
         )
         self.excel_source_path = None
+        self.excel_destination_path = None
         self.root = root
         self.running = False
         self.paused = False
@@ -259,6 +261,7 @@ class HumanActivitySimulator:
         self.status_label.config(text="RUNNING", fg="#00d4aa")
         self.log("Test session started.")
         self.logger.log_activity("Test session started.")
+       
 
     def pause_session(self):
         if not self.running or self.paused:
@@ -417,7 +420,6 @@ class HumanActivitySimulator:
 
         refresh_tasks()
 
-
     def open_settings(self):
         settings_window = tk.Toplevel(self.root)
         settings_window.title("Settings")
@@ -535,7 +537,7 @@ class HumanActivitySimulator:
 
         window = tk.Toplevel(self.root)
         window.title("Excel Automation")
-        window.geometry("550x400")
+        window.geometry("600x500")
         window.configure(bg="#101820")
 
         self.excel_status_label = tk.Label(
@@ -560,6 +562,18 @@ class HumanActivitySimulator:
             command=self.select_excel_source
         ).pack(pady=8)
 
+        tk.Button(
+             window,
+            text="SELECT DESTINATION EXCEL FILE",
+            command=self.select_excel_destination
+       ).pack(pady=8)
+        
+        tk.Button(
+             window,
+             text="OPEN DESTINATION WORKBOOK",
+             command=self.open_destination_workbook
+        ).pack(pady=8)
+
         controls = tk.Frame(window, bg="#101820")
         controls.pack(pady=15)
 
@@ -574,7 +588,6 @@ class HumanActivitySimulator:
 
         tk.Button(controls, text="STOP",
                   command=self.excel_controller.stop).pack(side="left", padx=5)
-
 
     def select_excel_source(self):
 
@@ -608,19 +621,35 @@ class HumanActivitySimulator:
 
 
     def start_excel_typing(self):
-
         if not self.excel_source_path:
             messagebox.showwarning(
-                "Missing file",
-                "Select a source workbook first."
+                "Missing Source",
+                "Select a source Excel workbook first."
+            )
+            return
+
+        if not self.excel_destination_path:
+            messagebox.showwarning(
+                "Missing Destination",
+                "Select a destination Excel workbook first."
             )
             return
 
         if self.excel_controller.running:
+            messagebox.showinfo("Already Running", "Excel automation is already running.")
+            return
+
+        confirmed = messagebox.askyesno(
+            "Confirm Excel Data Entry",
+            "Make sure the destination workbook is open in Excel and the first "
+            "destination cell is selected (usually A2).\\n\\n"
+            "The simulator will begin typing after a 5-second delay. "
+            "Do you want to continue?"
+        )
+        if not confirmed:
             return
 
         self.excel_controller.start()
-
 
     def update_excel_progress(self, completed, total):
 
@@ -639,10 +668,56 @@ class HumanActivitySimulator:
             lambda: self.excel_status_label.config(text=status)
         )
 
+    def select_excel_destination(self):
+        file_path = filedialog.askopenfilename(
+            title="Select destination Excel workbook",
+            filetypes=[("Excel files", "*.xlsx")]
+        )
 
+        if not file_path:
+            return
+
+        if self.excel_source_path and os.path.normcase(os.path.abspath(file_path)) == os.path.normcase(os.path.abspath(self.excel_source_path)):
+            messagebox.showerror(
+                "Invalid Selection",
+                "Source and destination workbooks must be different."
+            )
+            return
+
+        self.excel_destination_path = file_path
+        self.excel_status_label.config(text="Destination workbook selected.")
+
+        messagebox.showinfo(
+            "Destination Selected",
+             f"Destination selected:\n{file_path}"
+        )
+
+    def open_destination_workbook(self):
+        if not self.excel_destination_path:
+            messagebox.showwarning(
+                "No Destination",
+                "Please select a destination workbook first."
+            )
+            return
+
+        try:
+            os.startfile(self.excel_destination_path)
+            messagebox.showinfo(
+                "Workbook Opened",
+                "Destination workbook opened successfully.\n"
+                "In Excel, select the first cell where data should be entered "
+                "(usually A2), then return to HAS."
+            )
+        except Exception as error:
+            messagebox.showerror(
+                "Opening Error",
+                str(error)
+            )
 
 
 if __name__ == "__main__":
     root = tk.Tk()
     app = HumanActivitySimulator(root)
     root.mainloop()
+
+      

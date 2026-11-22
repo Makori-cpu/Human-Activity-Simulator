@@ -589,8 +589,8 @@ class HumanActivitySimulator:
         tk.Button(controls, text="STOP",
                   command=self.excel_controller.stop).pack(side="left", padx=5)
 
+    
     def select_excel_source(self):
-
         file_path = filedialog.askopenfilename(
             title="Select source Excel workbook",
             filetypes=[("Excel files", "*.xlsx")]
@@ -599,12 +599,25 @@ class HumanActivitySimulator:
         if not file_path:
             return
 
+        if (
+            self.excel_destination_path
+            and os.path.normcase(os.path.abspath(file_path))
+            == os.path.normcase(
+                os.path.abspath(self.excel_destination_path)
+            )
+        ):
+            messagebox.showerror(
+                "Invalid Selection",
+                "Source and destination must be different workbooks."
+            )
+            return
+
         try:
             count = self.excel_controller.load_source(file_path)
             self.excel_source_path = file_path
 
             self.excel_status_label.config(
-                text=f"Loaded {count} records."
+                text=f"Source loaded: {count} records."
             )
 
             self.excel_progress_label.config(
@@ -612,44 +625,99 @@ class HumanActivitySimulator:
             )
 
             messagebox.showinfo(
-                "Success",
-                f"Loaded {count} records successfully."
+                "Source Loaded",
+                f"{count} records loaded successfully."
             )
 
         except Exception as error:
-            messagebox.showerror("Excel Error", str(error))
+            messagebox.showerror(
+                "Source Workbook Error",
+                str(error)
+            )
 
 
+    
     def start_excel_typing(self):
         if not self.excel_source_path:
             messagebox.showwarning(
                 "Missing Source",
-                "Select a source Excel workbook first."
+                "Select a source workbook first."
             )
             return
 
         if not self.excel_destination_path:
             messagebox.showwarning(
                 "Missing Destination",
-                "Select a destination Excel workbook first."
+                "Select a destination workbook first."
             )
             return
 
         if self.excel_controller.running:
-            messagebox.showinfo("Already Running", "Excel automation is already running.")
             return
 
-        confirmed = messagebox.askyesno(
-            "Confirm Excel Data Entry",
-            "Make sure the destination workbook is open in Excel and the first "
-            "destination cell is selected (usually A2).\\n\\n"
-            "The simulator will begin typing after a 5-second delay. "
-            "Do you want to continue?"
-        )
-        if not confirmed:
-            return
+        try:
+            plan = self.excel_controller.prepare(
+                self.excel_destination_path
+            )
 
-        self.excel_controller.start()
+            match_lines = []
+
+            for item in plan["matches"]:
+                match_lines.append(
+                    f"{item['source_header']} -> "
+                    f"{item['destination_header']} "
+                    f"(column {item['destination_letter']}, "
+                    f"{item['match_type']}, "
+                    f"confidence {item['confidence']})"
+                )
+
+            unmatched_destination = (
+                "\n".join(plan["unmatched_destination"])
+                if plan["unmatched_destination"]
+                else "None"
+            )
+
+            unmatched_source = (
+                "\n".join(plan["unmatched_source"])
+                if plan["unmatched_source"]
+                else "None"
+            )
+
+            summary = (
+                f"Destination worksheet: "
+                f"{plan['destination_sheet']}\n"
+                f"First available row: {plan['start_row']}\n"
+                f"Records to enter: {plan['total_records']}\n\n"
+                f"MATCHED HEADINGS:\n"
+                + "\n".join(match_lines)
+                + "\n\nUNMATCHED DESTINATION HEADINGS "
+                "(will remain blank):\n"
+                + unmatched_destination
+                + "\n\nUNUSED SOURCE HEADINGS:\n"
+                + unmatched_source
+                + "\n\nA backup copy will be created before entry."
+                "\nExcel must remain in the foreground."
+                "\nThe simulator will navigate to each matched cell,"
+                " enter its value, save and verify the results."
+                "\n\nStart automation?"
+            )
+
+            if not messagebox.askyesno(
+                "Review Intelligent Transfer",
+                summary
+            ):
+                return
+
+            self.excel_controller.start(
+                self.excel_destination_path,
+                plan=plan
+            )
+
+        except Exception as error:
+            messagebox.showerror(
+                "Excel Automation Error",
+                str(error)
+            )
 
     def update_excel_progress(self, completed, total):
 
